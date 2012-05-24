@@ -47,18 +47,21 @@ class NewBookmarkCommand(sublime_plugin.TextCommand):
 
 		print("Saving bookmark {0} at key {1}".format(bookmarkName, key))
 
-
 class BrowseBookmarksCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
 		bookmarkOpts = []
+		self.baseNames = []
+		self.fileNames = []
 		self.panelKeys = []
 
-		baseName = os.path.basename(self.view.file_name())
+		self.baseName = os.path.basename(self.view.file_name())
 
 		for key, val in BOOKMARKS.iteritems():
-			if baseName == val['baseName']:
-				bookmarkOpts.append(val['name'])
-				self.panelKeys.append(key)
+			#if baseName == val['baseName']:
+			bookmarkOpts.append(val['name'])
+			self.baseNames.append(val['baseName'])
+			self.fileNames.append(val['fileName'])
+			self.panelKeys.append(key)
 
 		window = self.view.window()
 
@@ -70,16 +73,27 @@ class BrowseBookmarksCommand(sublime_plugin.TextCommand):
 			print("No bookmark selected. Returning ")
 			return
 
+		if(self.baseName != self.baseNames[idx]):
+			new_view = sublime.active_window().open_file(self.fileNames[idx])
+			sublime.set_timeout(self.wait_for_view(new_view, idx), 100)
+		else:
+			self.goto_bookmark(idx)
+
+	def goto_bookmark(self, idx):
 		# Get the key for the bookmark
 		key = self.panelKeys[idx]
 
 		# Retrieve the region for the bookmark
-		bmRegion = self.view.get_regions("dogears_" + key)
+		view = sublime.active_window().active_view()
+		bmRegion = view.get_regions("dogears_" + key)
 
 		if len(bmRegion) == 0:
 			return
 
-		self.view.run_command("select_all_bookmarks", {'name':"dogears_" + key})
+		view.run_command("select_all_bookmarks", {'name':"dogears_" + key})
 
-
-
+	def wait_for_view(self, view, idx):
+		if (view.is_loading()):
+			sublime.set_timeout(self.wait_for_view(view, idx), 100)
+		else:
+			self.goto_bookmark(idx)
